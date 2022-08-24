@@ -74,6 +74,7 @@ class Solver:
             width_limit = sys.float_info.max
         if height_limit is None:
             height_limit = sys.float_info.max
+        #print("problem at line 77:", problem)
         max_width = max([min(r["width"], r["height"]) if r["rotatable"] else r["width"] for r in problem.rectangles])
         max_height = max([min(r["width"], r["height"]) if r["rotatable"] else r["height"] for r in problem.rectangles])
         if width_limit < max_width:
@@ -162,6 +163,7 @@ class Solver:
                 problem=problem,
                 width_limit=width_limit,
                 height_limit=height_limit,
+                adj_constraint = [(1,2), (3,4)],
                 show_progress=show_progress,
             )
         else:
@@ -174,7 +176,9 @@ class Solver:
 
         # Convert simanneal's final_state to a Solution object
         gp, gn, rotations = rpp.retrieve_pairs(n=problem.n, state=final_state)
+        print("gp, gn, rotations", gp, gn, rotations)
         seqpair = SequencePair(pair=(gp, gn))
+        #print("problem before florrplan:", problem)
         floorplan = seqpair.decode(problem=problem, rotations=rotations)
 
         return Solution(sequence_pair=seqpair, floorplan=floorplan)
@@ -191,6 +195,7 @@ class RectanglePackingProblemAnnealer(simanneal.Annealer):
         problem: Problem,
         width_limit: Optional[float] = None,
         height_limit: Optional[float] = None,
+        adj_constraint: Optional[List[Tuple]] = None,
         show_progress: bool = False,
     ) -> None:
         self.seqpair = SequencePair()
@@ -210,6 +215,8 @@ class RectanglePackingProblemAnnealer(simanneal.Annealer):
         self.height_limit: float = sys.float_info.max
         if height_limit:
             self.height_limit = height_limit
+        if adj_constraint:
+            self.adj_constraint = adj_constraint
         self.state: List[int] = []
         self._step: int = 0  # Current annealing step
         self._prev_step: int = 0  # Previous step in the update method
@@ -324,7 +331,10 @@ class RectanglePackingProblemAnnealerSoft(RectanglePackingProblemAnnealer):
         initial_state: List[int] = self.state[:]
 
         # Choose two indices and swap them
-        i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
+        if len(self.adj_constraint) > 0:
+            i, j = self.adj_constraint.pop(0)
+        else:
+            i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
         offset = random.randint(0, 1) * self.problem.n  # Choose G_{+} (=0) or G_{-} (=1)
 
         # Swap them (i != j always holds true)

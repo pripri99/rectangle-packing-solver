@@ -68,7 +68,9 @@ class SequencePair:
         # Width and height dealing with rotations
         width_wrot = []
         height_wrot = []
+        all_label = []
         for i in range(self.n):
+            all_label.append(problem.rectangles[i]["label"])
             if (rotations is None) or (rotations[i] % 2 == 0):
                 # no rotation
                 width_wrot.append(problem.rectangles[i]["width"])
@@ -127,6 +129,7 @@ class SequencePair:
                     "y": dist_v[i] - height_wrot[i],  # distande from bottom edge
                     "width": width_wrot[i],
                     "height": height_wrot[i],
+                    "label": all_label[i],
                 }
             )
 

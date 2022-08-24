@@ -33,5 +33,5 @@ class Floorplan:
         s += "'positions': " + str(self.positions) + ", "
         s += "'bounding_box': " + str(self.bounding_box) + ", "
         s += "'area': " + str(self.area) + "})"
-
+        #print("inside floorplan class:", s)
         return s

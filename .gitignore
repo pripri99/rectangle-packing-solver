@@ -188,4 +188,4 @@ cython_debug/
 # Project specific settings
 ################################
 
-floorplan.png
+*.png

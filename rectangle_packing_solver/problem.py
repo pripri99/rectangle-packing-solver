@@ -35,6 +35,8 @@ class Problem:
                         "width": r[0],
                         "height": r[1],
                         "rotatable": r[2] if len(r) >= 3 else False,
+                        "label": r["label"],
+                        
                     }
                 )
             elif isinstance(r, dict):
@@ -44,6 +46,7 @@ class Problem:
                         "width": r["width"],
                         "height": r["height"],
                         "rotatable": r["rotatable"] if "rotatable" in r else False,
+                        "label": r["label"],
                     }
                 )
             else:

@@ -66,7 +66,7 @@ class Visualizer:
             centering_offset = 0.011
             center_x = rectangle["x"] + rectangle["width"] / 2 - bb_width * centering_offset
             center_y = rectangle["y"] + rectangle["height"] / 2 - bb_height * centering_offset
-            ax.text(x=center_x, y=center_y, s=rectangle["id"], fontsize=18, color=fontcolor)
+            ax.text(x=center_x, y=center_y, s=rectangle["label"], fontsize=18, color=fontcolor) #change id to label for s
 
         # Output
         if path is None:

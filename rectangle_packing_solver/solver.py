@@ -49,6 +49,7 @@ class Solver:
         simanneal_steps: int = 100,
         show_progress: bool = False,
         seed: Optional[int] = None,
+        adj: Optional[List[List]] = None,
     ) -> Solution:
         if seed:
             random.seed(seed)
@@ -66,9 +67,11 @@ class Solver:
                 simanneal_minutes,
                 simanneal_steps,
                 show_progress,
+                adj,
                 strategy="hard",
+                
             )
-
+        print("ADJS CONSTRAINTS:", adj)
         # If width/height limits are given...
         if width_limit is None:
             width_limit = sys.float_info.max
@@ -103,7 +106,9 @@ class Solver:
                 simanneal_minutes,
                 simanneal_steps,
                 show_progress,
+                adj,
                 strategy="soft",
+                
             )
         else:
             return self._solve_with_strategy(
@@ -114,7 +119,9 @@ class Solver:
                 simanneal_minutes,
                 simanneal_steps,
                 show_progress,
+                adj,
                 strategy="hard",
+                
             )
 
     def _solve_with_strategy(
@@ -126,7 +133,9 @@ class Solver:
         simanneal_minutes: float = 0.1,
         simanneal_steps: int = 100,
         show_progress: bool = False,
+        adj: Optional[List[List]] = None,
         strategy: str = None,
+        
     ) -> Solution:
         if not initial_state:
             # Initial state (= G_{+} + G_{-} + rotations)
@@ -155,6 +164,7 @@ class Solver:
                 problem=problem,
                 width_limit=width_limit,
                 height_limit=height_limit,
+                adj_constraint = adj,
                 show_progress=show_progress,
             )
         elif strategy == "soft":
@@ -163,12 +173,12 @@ class Solver:
                 problem=problem,
                 width_limit=width_limit,
                 height_limit=height_limit,
-                adj_constraint = [(1,2), (3,4)],
+                adj_constraint = adj,
                 show_progress=show_progress,
             )
         else:
             raise ValueError("'strategy' must be either of ['hard', 'soft'].")
-
+        print("ADJS CONSTRAINTS:", adj)
         signal.signal(signal.SIGINT, exit_handler)
         rpp.copy_strategy = "slice"  # We use "slice" since the state is a list
         rpp.set_schedule(rpp.auto(minutes=simanneal_minutes, steps=simanneal_steps))
@@ -195,7 +205,7 @@ class RectanglePackingProblemAnnealer(simanneal.Annealer):
         problem: Problem,
         width_limit: Optional[float] = None,
         height_limit: Optional[float] = None,
-        adj_constraint: Optional[List[Tuple]] = None,
+        adj_constraint: Optional[List[List]] = None,
         show_progress: bool = False,
     ) -> None:
         self.seqpair = SequencePair()
@@ -217,6 +227,8 @@ class RectanglePackingProblemAnnealer(simanneal.Annealer):
             self.height_limit = height_limit
         if adj_constraint:
             self.adj_constraint = adj_constraint
+        else:
+            self.adj_constraint = []
         self.state: List[int] = []
         self._step: int = 0  # Current annealing step
         self._prev_step: int = 0  # Previous step in the update method
@@ -272,8 +284,19 @@ class RectanglePackingProblemAnnealerHard(RectanglePackingProblemAnnealer):
 
         # Maximum the number of trial: 10000
         for _ in range(10000):
+            constraint = False
+            
             # Choose two indices and swap them
-            i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
+            if len(self.adj_constraint[0]) > 0:
+                print("adj constraints:", self.adj_constraint)
+                i, j = self.adj_constraint[0].pop(0)
+                constraint = True
+            else:
+                while True:
+                    i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
+                    if (i,j) not in self.adj_constraint[1] and (j,i) not in self.adj_constraint[1]:
+                        break
+            #print("hard i,j:", i, j)
             offset = random.randint(0, 1) * self.problem.n  # Choose G_{+} (=0) or G_{-} (=1)
 
             # Swap them (i != j always holds true)
@@ -284,10 +307,13 @@ class RectanglePackingProblemAnnealerHard(RectanglePackingProblemAnnealer):
                 if random.randint(0, 1) == 1:
                     self.state[i + 2 * self.problem.n] = initial_state[i + 2 * self.problem.n] + 1
 
-            # We adopt solution if the solution width/height limit is satisfied
+            # We adopt solution if the solution width/height limit is satisfied OR AN ADJ CONSTRAINT
             energy = self.energy()
             if energy < sys.float_info.max:
                 break
+            else:
+                if constraint == True:
+                    self.adj_constraint[0].append((i,j))
 
             # Restore the state
             self.state = initial_state[:]
@@ -329,12 +355,16 @@ class RectanglePackingProblemAnnealerSoft(RectanglePackingProblemAnnealer):
         """
         initial_energy: float = self.energy()
         initial_state: List[int] = self.state[:]
-
         # Choose two indices and swap them
-        if len(self.adj_constraint) > 0:
-            i, j = self.adj_constraint.pop(0)
+        if len(self.adj_constraint[0]) > 0:
+            print("adj constraints:", self.adj_constraint[0])
+            i, j = self.adj_constraint[0].pop(0)
         else:
-            i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
+            while True:
+                i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
+                if (i,j) not in self.adj_constraint[1] and (j,i) not in self.adj_constraint[1]:
+                    break
+        #print("soft i,j:", i, j)
         offset = random.randint(0, 1) * self.problem.n  # Choose G_{+} (=0) or G_{-} (=1)
 
         # Swap them (i != j always holds true)

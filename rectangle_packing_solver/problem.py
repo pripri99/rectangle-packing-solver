@@ -35,6 +35,7 @@ class Problem:
                         "width": r[0],
                         "height": r[1],
                         "rotatable": r[2] if len(r) >= 3 else False,
+                        "room_type":r["type"],
                         "label": r["label"],
                         
                     }
@@ -46,6 +47,7 @@ class Problem:
                         "width": r["width"],
                         "height": r["height"],
                         "rotatable": r["rotatable"] if "rotatable" in r else False,
+                        "room_type":r["type"],
                         "label": r["label"],
                     }
                 )

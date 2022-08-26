@@ -16,10 +16,14 @@ from typing import Tuple
 
 import matplotlib.patches as patches
 from matplotlib import pylab as plt
+from matplotlib import collections as mc
 
 from .solution import Solution
 import numpy as np
 import math
+from scipy.spatial import ConvexHull
+import random
+from shapely.geometry import LineString
 
 
 class Visualizer:
@@ -57,11 +61,28 @@ class Visualizer:
         fig = plt.figure(figsize=(10, 10 * bb_height / bb_width + 0.5))
         ax = plt.axes()
         ax.set_aspect("equal")
-        plt.xlim([0, bb_width])
-        plt.ylim([0, bb_height])
-        plt.xlabel("X")
-        plt.ylabel("Y")
+        plt.xlim([-1, bb_width+1])
+        plt.ylim([-1, bb_height+1])
+        #plt.xlabel("X")
+        #plt.ylabel("Y")
         #plt.title(title)
+
+
+        #add outside walls
+        contour = self.find_contour(positions)
+        self.find_loops(positions)
+        #points = np.array([p for rect in positions for p in self.get_points(rect)])
+        #hull = ConvexHull(points)
+        print("contour:", contour)
+        # print(lines)
+
+        #c = [(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for line in contour]
+        c = [(0,0,0) for line in contour]
+
+        lc = mc.LineCollection(contour, colors=c, linewidths=3)
+        ax.add_collection(lc)
+
+        
 
         # Plot every rectangle
         for i, rectangle in enumerate(positions):
@@ -95,6 +116,9 @@ class Visualizer:
             side = [(rectangle["x"], rectangle["y"]), (rectangle["x"], rectangle["y"]+rectangle["height"])]
             #print("side:", side)
             self.annotate_dim(ax, side[0], side[1])
+        
+        
+
         plt.axis('off')
         # Output
         if path is None:
@@ -104,9 +128,117 @@ class Visualizer:
 
         plt.close()
     @classmethod
+    def find_loops(self, all_line):
+        all_loops = []
+        while len(all_line) > 0:
+            loop = [random.choice(all_line)]
+            closed = False
+            tmp = all_line.copy()
+            while not closed:
+                tmp.remove(loop[-1])
+                found = False
+                for line in  tmp:
+                    if line[0] == loop[-1][1] or line[0] == loop[-1][0] or line[1] == loop[-1][1] or line[1] == loop[-1][0]:
+                        loop.append(line)
+                        found = True
+                        break
+                if found == False: 
+                    print("Not found:", loop, "all:", all_loops)
+                    break
+                if loop[0][0] == loop[-1][1] or loop[0][0] == loop[-1][0] or loop[0][1] == loop[-1][1] or loop[0][1] == loop[-1][0]:
+                    closed = True
+                
+            all_loops.append(loop)
+            all_line = [l for l in tmp]
+        print("all loops", all_loops)
+        return all_loops
+
+
+    @classmethod
     def find_contour(self, all_rectangle):
-        all_line = []
-        return all_line
+        all_lines = []
+        points = [p for rect in all_rectangle for p in self.get_points(rect)]
+        #hull = ConvexHull(points)
+        # get all sides rectangle
+        for rect in all_rectangle:
+            p = self.get_points(rect)
+            all_side = [[p[0],p[1]],[p[1],p[2]],[p[2],p[3]],[p[3],p[0]]]
+            all_lines += all_side
+        # lines that are not rectangle sides
+        extra_lines = []
+        for p1 in points:
+            for p2 in points:
+                if p1 != p2:
+                    if p1[0]==p2[0] or p1[1]==p2[1]:
+                        if [p1,p2] not in all_lines and [p2,p1] not in all_lines:
+                            all_lines.append([p1,p2])
+                            extra_lines.append([p1,p2])
+        
+        line_use = {}
+        for line in all_lines:
+            line_use[tuple(line)] = 0
+            for rect in all_rectangle:
+                p = self.get_points(rect)
+                all_side = [[p[0],p[1]],[p[1],p[2]],[p[2],p[3]],[p[3],p[0]]]
+                for side in all_side:
+                    l1 = LineString(line)
+                    l2 = LineString(side)
+                    if l1.crosses(l2) or l1.covers(l2) or l2.crosses(l1) or l2.covers(l1) or l1.overlaps(l2) or l2.overlaps(l1) : 
+                        if line_use[tuple(line)]  == 6 :
+                            print(line, "in",  side)
+                        line_use[tuple(line)] += 1
+                        break #only one side can overlap
+        
+        bad_lines = []
+        for line in line_use:
+            if line_use[tuple(line)] == 0:
+                bad_lines.append([line[0], line[1]])
+        
+        outside_lines = []
+        for line in line_use:
+            if line_use[tuple(line)] == 1:
+                touch = False
+                for extra_line in bad_lines:
+                    l1 = LineString(line)
+                    l2 = LineString(extra_line)
+                    if l1.covers(LineString(l2)) or l2.covers(LineString(l1)): 
+                        touch = True
+                        break
+                #print(line)
+                if touch == False: outside_lines.append([line[0], line[1]])
+        #print("line use:", line_use)
+        return outside_lines
+    @classmethod
+    def distance(self, a,b):
+        return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+    @classmethod
+    def is_between(self, a,c,b):
+        return self.distance(a,c) + self.distance(c,b) == self.distance(a,b)
+    @classmethod
+    def are_overlapping(self, r, s):
+        return r[1] >= s[0] and s[1] >= r[0]
+    @classmethod
+    def rect_contains_line(self, rect, line):
+        p = self.get_points(rect)
+        all_side = [[p[0],p[1]],[p[1],p[2]],[p[2],p[3]],[p[3],p[0]]]
+
+        for side in all_side:
+            if line[0] in side or self.is_between(side[0], line[0], side[1]):
+                if (line[1] in side or self.is_between(side[0], line[1], side[1]) or self.is_between(line[0], side[0], line[1])
+                or self.is_between(line[0], side[1], line[1])):
+                    return True
+            if line[1] in side or self.is_between(side[0], line[1], side[1]):
+                if (line[0] in side or self.is_between(side[0], line[0], side[1]) or self.is_between(line[0], side[0], line[1])
+                or self.is_between(line[0], side[1], line[1])):
+                    return True
+
+        return False
+    @classmethod
+    def get_points(self, rectangle):
+        return [(rectangle["x"], rectangle["y"]), (rectangle["x"]+rectangle["width"], rectangle["y"]),
+        (rectangle["x"]+rectangle["width"], rectangle["y"]+rectangle["height"]),
+        (rectangle["x"], rectangle["y"]+rectangle["height"])]
+    
     @classmethod
     def annotate_dim(self, ax, xyfrom, xyto, text=None):
         #print("xyfrom, xyto",xyfrom, xyto,)
@@ -127,6 +259,12 @@ class Visualizer:
             #offeset_y = abs(xyto[0]-xyfrom[0])*0.5
             #print("offset:", offeset_y)
             #offeset_x = 0
+        # vertical line
+        if xyfrom[0] == xyto[0]:
+            # move left == increase x
+            tmp = xyto[0] + abs(xyto[1]-xyfrom[1])*0.05
+            xyfrom = (tmp, xyfrom[1])
+            xyto = (tmp, xyto[1])
 
         if text is None:
             text = str(

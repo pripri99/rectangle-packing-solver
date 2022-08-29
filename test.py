@@ -29,7 +29,7 @@ problem = rps.Problem(rectangles=[
 print("problem:", problem)
 seeds = [random.randint(0, 999999) for i in range(0,100)]
 random_num = str(random.randint(0,99))
-for i in range(0,3):
+for i in range(0,1):
     #adj_list = [(0,1),(0,7), (1,3), (1,7), (2,6), (2,7), (3,4), (3,7), (4,5), (5,6),(1,0),(7,0), (3,1), (7,1), (6,2), (7,2), (4,3), (7,3), (5,4), (6,5)]
     #adj_list = [(2,6), (6,2), (5,6), (6,5), (0,7), (1,7), (2,7),(3,7), (7,0), (7,1), (7,2), (7,3)]
     adj_list = [(3,4),(4,5),(5,6), (6,2), (0,1), (1,3)]

@@ -24,6 +24,7 @@ import math
 from scipy.spatial import ConvexHull
 import random
 from shapely.geometry import LineString
+from shapely.ops import polygonize
 
 
 class Visualizer:
@@ -70,7 +71,15 @@ class Visualizer:
 
         #add outside walls
         contour = self.find_contour(positions)
-        self.find_loops(positions)
+        #self.find_loops(contour)
+        for pol in list(polygonize(contour)):
+            #plt.plot(*pol.exterior.xy)
+            color= self.dict_room_color["corridor"]
+            c = [val/255 for val in color]
+            color = (c[0],c[1],c[2], 1.0)
+            patch = patches.Polygon(np.array(pol.exterior.xy).T, fc=color)
+            ax.add_patch(patch)
+
         #points = np.array([p for rect in positions for p in self.get_points(rect)])
         #hull = ConvexHull(points)
         print("contour:", contour)
@@ -132,24 +141,6 @@ class Visualizer:
         all_loops = []
         while len(all_line) > 0:
             loop = [random.choice(all_line)]
-            closed = False
-            tmp = all_line.copy()
-            while not closed:
-                tmp.remove(loop[-1])
-                found = False
-                for line in  tmp:
-                    if line[0] == loop[-1][1] or line[0] == loop[-1][0] or line[1] == loop[-1][1] or line[1] == loop[-1][0]:
-                        loop.append(line)
-                        found = True
-                        break
-                if found == False: 
-                    print("Not found:", loop, "all:", all_loops)
-                    break
-                if loop[0][0] == loop[-1][1] or loop[0][0] == loop[-1][0] or loop[0][1] == loop[-1][1] or loop[0][1] == loop[-1][0]:
-                    closed = True
-                
-            all_loops.append(loop)
-            all_line = [l for l in tmp]
         print("all loops", all_loops)
         return all_loops
 

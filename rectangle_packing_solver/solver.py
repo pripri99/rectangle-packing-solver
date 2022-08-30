@@ -189,7 +189,7 @@ class Solver:
         print("gp, gn, rotations", gp, gn, rotations)
         seqpair = SequencePair(pair=(gp, gn))
         #print("problem before florrplan:", problem)
-        floorplan = seqpair.decode(problem=problem, rotations=rotations)
+        floorplan = seqpair.decode(problem=problem, rotations=rotations, display=True)
 
         return Solution(sequence_pair=seqpair, floorplan=floorplan)
 
@@ -284,18 +284,8 @@ class RectanglePackingProblemAnnealerHard(RectanglePackingProblemAnnealer):
 
         # Maximum the number of trial: 10000
         for _ in range(10000):
-            constraint = False
             
-            # Choose two indices and swap them
-            if len(self.adj_constraint[0]) > 0:
-                print("adj constraints:", self.adj_constraint)
-                i, j = self.adj_constraint[0].pop(0)
-                constraint = True
-            else:
-                while True:
-                    i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
-                    if (i,j) not in self.adj_constraint[1] and (j,i) not in self.adj_constraint[1]:
-                        break
+            i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
             #print("hard i,j:", i, j)
             offset = random.randint(0, 1) * self.problem.n  # Choose G_{+} (=0) or G_{-} (=1)
 
@@ -311,9 +301,7 @@ class RectanglePackingProblemAnnealerHard(RectanglePackingProblemAnnealer):
             energy = self.energy()
             if energy < sys.float_info.max:
                 break
-            else:
-                if constraint == True:
-                    self.adj_constraint[0].append((i,j))
+            
 
             # Restore the state
             self.state = initial_state[:]
@@ -331,13 +319,17 @@ class RectanglePackingProblemAnnealerHard(RectanglePackingProblemAnnealer):
         # Pick up sequence-pair and rotations from state
         gp, gn, rotations = self.retrieve_pairs(n=self.problem.n, state=self.state)
         seqpair = SequencePair(pair=(gp, gn))
-        floorplan = seqpair.decode(problem=self.problem, rotations=rotations)
+        floorplan = seqpair.decode(problem=self.problem, rotations=rotations, adjacency=self.adj_constraint)
 
         # Returns float max, if width/height limit is not satisfied
         if floorplan.bounding_box[0] > self.width_limit:
             return sys.float_info.max
         if floorplan.bounding_box[1] > self.height_limit:
             return sys.float_info.max
+
+        if floorplan.penalty > 0:
+            #print("WRONG ADJS PLAN")
+            return self.max_possible_width * self.max_possible_height + floorplan.area + 2**floorplan.penalty
 
         return float(floorplan.area)
 
@@ -355,15 +347,8 @@ class RectanglePackingProblemAnnealerSoft(RectanglePackingProblemAnnealer):
         """
         initial_energy: float = self.energy()
         initial_state: List[int] = self.state[:]
-        # Choose two indices and swap them
-        if len(self.adj_constraint[0]) > 0:
-            print("adj constraints:", self.adj_constraint[0])
-            i, j = self.adj_constraint[0].pop(0)
-        else:
-            while True:
-                i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
-                if (i,j) not in self.adj_constraint[1] and (j,i) not in self.adj_constraint[1]:
-                    break
+        
+        i, j = random.sample(range(self.problem.n), k=2)  # The first and second index
         #print("soft i,j:", i, j)
         offset = random.randint(0, 1) * self.problem.n  # Choose G_{+} (=0) or G_{-} (=1)
 
@@ -389,7 +374,7 @@ class RectanglePackingProblemAnnealerSoft(RectanglePackingProblemAnnealer):
         # Pick up sequence-pair and rotations from state
         gp, gn, rotations = self.retrieve_pairs(n=self.problem.n, state=self.state)
         seqpair = SequencePair(pair=(gp, gn))
-        floorplan = seqpair.decode(problem=self.problem, rotations=rotations)
+        floorplan = seqpair.decode(problem=self.problem, rotations=rotations, adjacency=self.adj_constraint)
 
         # Returns the max possible area, if width/height limit is not satisfied.
         # This solution could be chosen in the earlier steps of the annealing,
@@ -398,6 +383,10 @@ class RectanglePackingProblemAnnealerSoft(RectanglePackingProblemAnnealer):
             return self.max_possible_width * self.max_possible_height + floorplan.area
         if floorplan.bounding_box[1] > self.height_limit:
             return self.max_possible_width * self.max_possible_height + floorplan.area
+        
+        if floorplan.penalty > 0:
+            #print("WRONG ADJS PLAN")
+            return self.max_possible_width * self.max_possible_height + floorplan.area + 2**floorplan.penalty
 
         return float(floorplan.area)
 

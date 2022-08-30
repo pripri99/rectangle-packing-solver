@@ -20,9 +20,10 @@ class Floorplan:
     A class to represent a rectangle packing floorplan.
     """
 
-    def __init__(self, positions: List[Dict], bounding_box: Tuple, area: Union[int, float] = -1.0) -> None:
+    def __init__(self, positions: List[Dict], bounding_box: Tuple, area: Union[int, float] = -1.0, penalty: Union[int, float] = 0) -> None:
         self.positions = positions
         self.bounding_box = bounding_box
+        self.penalty = penalty
         if 0 < area:
             self.area = area
         else:

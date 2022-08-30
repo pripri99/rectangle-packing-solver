@@ -14,6 +14,7 @@
 
 import graphlib
 from typing import Any, Dict, List, Optional, Tuple
+from xmlrpc.client import Boolean
 
 from .floorplan import Floorplan
 from .problem import Problem
@@ -46,7 +47,7 @@ class SequencePair:
 
         self.oblique_grid = self.pair_to_obliquegrid(pair=self.pair)
 
-    def decode(self, problem: Problem, rotations: Optional[List] = None) -> Floorplan:
+    def decode(self, problem: Problem, rotations: Optional[List] = None, adjacency: Optional[List] = [[],[]], display: Optional[Boolean] = False) -> Floorplan:
         """
         Decode:
             Based on the sequence pair and the problem with rotations information, calculate a floorplan
@@ -135,8 +136,72 @@ class SequencePair:
                     "label": all_label[i],
                 }
             )
+        penalty = self.adjacency_penalty(positions=positions, adjacency=adjacency, display=display)
+        #area = -3 if penalty > 0 else -1
 
-        return Floorplan(bounding_box=(bb_width, bb_height), positions=positions)
+
+        return Floorplan(bounding_box=(bb_width, bb_height), positions=positions, penalty=penalty)
+    @classmethod
+    def adjacency_penalty(self, positions: List[Dict], adjacency: List, display: Optional[Boolean]= False) -> int:
+        """
+        Count valid adjs (and/or invalid adjs) and assign cost to it
+        """
+        
+        adj_list = []
+        adj_name = []
+        for room in positions:
+            x_min = room["x"]
+            x_max = room["x"] + room["width"]
+            y_min = room["y"]
+            y_max = room["y"] + room["height"]
+            top_left = (room["x"], room["y"] + room["height"])
+            bottom_right = (room["x"] + room["width"], room["y"])
+            corners = [(x_min, y_min),(x_min, y_max),(x_max, y_max),(x_max, y_min)]
+            for room2 in positions:
+                if room2["id"] != room["id"]:
+                    tl = (room2["x"], room2["y"] + room2["height"])
+                    br = (room2["x"] + room2["width"], room2["y"])
+                    if self.check_overlap(rect1=[top_left,bottom_right],rect2=[tl,br]) == True:
+                        pair = (room["id"], room2["id"])
+                        if pair not in adj_list and pair[::-1] not in adj_list:
+                            adj_list.append(pair)
+                            adj_name.append([(room["label"], room2["label"])])
+
+            
+        if display == True: print("ADJS LIST:", adj_list, "ADJS Names:", adj_name)
+        penalty = -6
+        wanted_adj, banned_adj = adjacency
+        for edge in wanted_adj:
+            if edge not in adj_list and edge[::-1] not in adj_list:
+                penalty = penalty + 6
+            if edge in adj_list and edge[::-1] in adj_list:
+                penalty = penalty - 6
+        for edge in banned_adj:
+            if edge in adj_list or edge[::-1] in adj_list:
+                penalty = penalty + 12
+        '''for edge in adj_list:
+            if edge not in wanted_adj and edge[::-1] not in wanted_adj:
+                penalty = penalty + 1
+        '''
+        return penalty
+    @classmethod
+    def check_overlap(cls, rect1: List, rect2: List) -> Boolean:
+        tl1, br1 = rect1
+        tl2, br2 = rect2
+
+        # if rectangle has area 0, no overlap
+        if tl1[0] == br1[0] or tl1[1] == br1[1] or br2[0] == tl2[0] or tl2[1] == br2[1]:
+            return False
+        
+        # If one rectangle is on left side of other
+        if tl1[0] > br2[0] or tl2[0] > br1[0]:
+            return False
+    
+        # If one rectangle is above other
+        if br1[1] > tl2[1] or br2[1] > tl1[1]:
+            return False
+
+        return True
 
     def encode(self) -> None:
         """

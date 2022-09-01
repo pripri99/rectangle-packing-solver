@@ -59,7 +59,7 @@ class Visualizer:
         # Figure settings
         bb_width = bounding_box[0]
         bb_height = bounding_box[1]
-        fig = plt.figure(figsize=(10, 10 * bb_height / bb_width + 0.5))
+        fig = plt.figure(figsize=(10, 10 * bb_height / bb_width + 2))
         ax = plt.axes()
         ax.set_aspect("equal")
         plt.xlim([-1, bb_width+1])
@@ -68,11 +68,28 @@ class Visualizer:
         #plt.ylabel("Y")
         #plt.title(title)
 
+        r = patches.Rectangle(
+                xy=(-1, -1),
+                width=bounding_box[0]+2,
+                height=bounding_box[1]+2,
+                edgecolor="#000000",
+                facecolor="#ffffff",
+                alpha=1.0,
+                fill=True,
+            )
+        ax.add_patch(r)
+
 
         #add outside walls
         contour = self.find_contour(positions)
+        outside_walls = None #polygon with largest aread
+        max_area = 0
         #self.find_loops(contour)
         for pol in list(polygonize(contour)):
+            print("pol:", pol, "area:", pol.area)
+            if pol.area > max_area: 
+                max_area = pol.area
+                outside_walls = pol
             #plt.plot(*pol.exterior.xy)
             color= self.dict_room_color["corridor"]
             c = [val/255 for val in color]
@@ -86,27 +103,38 @@ class Visualizer:
         # print(lines)
 
         #c = [(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for line in contour]
-        c = [(0,0,0) for line in contour]
+        #c = [(0,0,0) for line in contour]
 
-        lc = mc.LineCollection(contour, colors=c, linewidths=3)
-        ax.add_collection(lc)
+        #lc = mc.LineCollection(contour, colors=c, linewidths=3)
+        #ax.add_collection(lc)
 
+        ordered_positions = []
+        for rect in positions:
+            if rect["room_type"].lower() not in ["bedroom", "bathroom", "garage"]:
+                ordered_positions.append(rect)
+        for rect in positions:
+            if rect["room_type"].lower() in ["bedroom", "bathroom", "garage"]:
+                ordered_positions.append(rect)
         
 
         # Plot every rectangle
-        for i, rectangle in enumerate(positions):
-            color, fontcolor = self.dict_room_color[rectangle["room_type"].lower()], "#ffffff"
+        for i, rectangle in enumerate(ordered_positions):
+            color, fontcolor = self.dict_room_color[rectangle["room_type"].lower()], "#000000"
             #print("COLOR FONTCOLOR:",color, fontcolor)
             c = [val/255 for val in color]
             color = (c[0],c[1],c[2], 1.0)
-            
+
+            color_for_edge = color
+            if rectangle["room_type"].lower() in ["bedroom", "bathroom", "garage"]:
+                color_for_edge = "#000000"
             #print("COLOR FONTCOLOR:",color, fontcolor)
             r = patches.Rectangle(
                 xy=(rectangle["x"], rectangle["y"]),
                 width=rectangle["width"],
                 height=rectangle["height"],
-                edgecolor="#000000",
+                edgecolor=color_for_edge,
                 facecolor=color,
+                lw = 4,
                 alpha=1.0,
                 fill=True,
             )
@@ -126,7 +154,8 @@ class Visualizer:
             #print("side:", side)
             self.annotate_dim(ax, side[0], side[1])
         
-        
+        patch = patches.Polygon(np.array(outside_walls.exterior.xy).T, ec="#000000", lw=10, fill=False)
+        ax.add_patch(patch)
 
         plt.axis('off')
         # Output

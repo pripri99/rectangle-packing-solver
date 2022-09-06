@@ -156,8 +156,9 @@ class Visualizer:
             #print("side:", side)
             self.annotate_dim(ax, side[0], side[1])
         
-        patch = patches.Polygon(np.array(outside_walls.exterior.xy).T, ec="#000000", lw=10, fill=False)
-        ax.add_patch(patch)
+        if outside_walls != None:
+            patch = patches.Polygon(np.array(outside_walls.exterior.xy).T, ec="#000000", lw=10, fill=False)
+            ax.add_patch(patch)
 
         plt.axis('off')
         # Output

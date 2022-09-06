@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import graphlib
+import random
+from .utility import segments_distance
 from typing import Any, Dict, List, Optional, Tuple
 from xmlrpc.client import Boolean
 
@@ -72,17 +74,19 @@ class SequencePair:
         all_label = []
         all_r_type = []
         for i in range(self.n):
+            w_range = random.randint(-2,2)
+            h_range = random.randint(-2,2)
             all_label.append(problem.rectangles[i]["label"])
             all_r_type.append(problem.rectangles[i]["room_type"])
             if (rotations is None) or (rotations[i] % 2 == 0):
                 # no rotation
-                width_wrot.append(problem.rectangles[i]["width"])
-                height_wrot.append(problem.rectangles[i]["height"])
+                width_wrot.append(problem.rectangles[i]["width"]+w_range)
+                height_wrot.append(problem.rectangles[i]["height"]+h_range)
             else:
                 # with rotation
                 assert problem.rectangles[i]["rotatable"]
-                width_wrot.append(problem.rectangles[i]["height"])
-                height_wrot.append(problem.rectangles[i]["width"])
+                width_wrot.append(problem.rectangles[i]["height"]+h_range)
+                height_wrot.append(problem.rectangles[i]["width"]+w_range)
 
         # Calculate the longest path in the "Horizontal Constraint Graph" (G_h)
         # This time complexity is O(n^2), may be optimized...
@@ -137,6 +141,8 @@ class SequencePair:
                 }
             )
         penalty = self.adjacency_penalty(positions=positions, adjacency=adjacency, display=display)
+        small_gap = self.gap_count(positions=positions, limit=3, display=display)
+        penalty = penalty + small_gap*6
         #area = -3 if penalty > 0 else -1
 
 
@@ -189,7 +195,31 @@ class SequencePair:
         """
         Count small gaps in the plan
         """
-        return 0
+        n_gap = 0
+        done = []
+        for room in positions:
+            a = (room["x"], room["y"])
+            b = (room["x"], room["y"] + room["height"])
+            c = (room["x"] + room["width"], room["y"] + room["height"])
+            d = (room["x"] + room["width"], room["y"])
+            all_sides = [[a,b], [b,c], [c,d], [d,a]]
+            for room2 in positions:
+                if room2["id"] != room["id"]:
+                    a = (room2["x"], room2["y"])
+                    b = (room2["x"], room2["y"] + room2["height"])
+                    c = (room2["x"] + room2["width"], room2["y"] + room2["height"])
+                    d = (room2["x"] + room2["width"], room2["y"])
+                    all_sides_r2 = [[a,b], [b,c], [c,d], [d,a]]
+
+                    for s1 in all_sides:
+                        for s2 in all_sides_r2:
+                            #print("segments:",[s1,s2])
+                            d = segments_distance(s1[0][0], s1[0][1], s1[1][0], s1[1][1], s2[0][0], s2[0][1], s2[1][0], s2[1][1])
+                            if [s1,s2] not in done and d > 0  and d <= limit:
+                                n_gap += 1
+                                done += [[s1,s2],[s2,s1]]
+        if display: print("Number of gaps:", n_gap)
+        return n_gap
     @classmethod
     def check_overlap(cls, rect1: List, rect2: List) -> Boolean:
         tl1, br1 = rect1

@@ -173,6 +173,38 @@ class Visualizer:
         print("all loops", all_loops)
         return all_loops
 
+    @classmethod
+    def remove_small_gaps(self, positions, limit = 3):
+        """
+        Count small gaps in the plan
+        """
+        n_gap = 0
+        done = []
+        for room in positions:
+            a = (room["x"], room["y"])
+            b = (room["x"], room["y"] + room["height"])
+            c = (room["x"] + room["width"], room["y"] + room["height"])
+            d = (room["x"] + room["width"], room["y"])
+            all_sides = [[a,b], [b,c], [c,d], [d,a]]
+            for room2 in positions:
+                if room2["id"] != room["id"]:
+                    a = (room2["x"], room2["y"])
+                    b = (room2["x"], room2["y"] + room2["height"])
+                    c = (room2["x"] + room2["width"], room2["y"] + room2["height"])
+                    d = (room2["x"] + room2["width"], room2["y"])
+                    all_sides_r2 = [[a,b], [b,c], [c,d], [d,a]]
+
+                    for s1 in all_sides:
+                        for s2 in all_sides_r2:
+                            #print("segments:",[s1,s2])
+                            d = segments_distance(s1[0][0], s1[0][1], s1[1][0], s1[1][1], s2[0][0], s2[0][1], s2[1][0], s2[1][1])
+                            if [s1,s2] not in done and d > 0  and d <= limit:
+                                n_gap += 1
+                                done += [[s1,s2],[s2,s1]]
+        
+        return n_gap
+    
+
 
     @classmethod
     def find_contour(self, all_rectangle):

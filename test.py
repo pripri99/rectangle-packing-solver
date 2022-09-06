@@ -69,7 +69,7 @@ plan_name = data[data_num]["1"]["info"]["name"]
 DIR = plan_name+"_plan_"+ str(data_num) + "_"+ str(len(problem.rectangles))+"rooms"
 Path("./test_output/"+DIR).mkdir(parents=True, exist_ok=True)
 complete_path = "./test_output/"+DIR
-for i in range(0,1):
+for i in range(0,7):
     adj_list = [(e[0]-1, e[1]-1) for e in data[data_num]["1"]["adjs"]] #random.choice(all_adjs)
     banned_adjs = data[data_num]["1"]["adj_ban"] #[(0,4), (0,13), (0,5)]
     adj_info = [[p for p in adj_list],banned_adjs]
@@ -78,7 +78,7 @@ for i in range(0,1):
     print("\n=== Solving without width/height constraints ===")
     solution = rps.Solver().solve(problem=problem, adj= adj_info,show_progress=True)
     print("solution:", solution)
-    image_path = complete_path+"/floorplan_noLimit_"+ str(i)+".png"
+    image_path = complete_path+"/floorplan_noLimit_"+str(index)+"_" +str(i)+".png"
     # Visualization (to floorplan.png)
     rps.Visualizer().visualize(solution=solution, path=image_path)
     print("INPUT ADJ:", adj_list)

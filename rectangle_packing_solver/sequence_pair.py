@@ -185,6 +185,12 @@ class SequencePair:
         '''
         return penalty
     @classmethod
+    def gap_count(self, positions: List[Dict], limit: int = 3, display: Optional[Boolean]= False) -> int:
+        """
+        Count small gaps in the plan
+        """
+        return 0
+    @classmethod
     def check_overlap(cls, rect1: List, rect2: List) -> Boolean:
         tl1, br1 = rect1
         tl2, br2 = rect2

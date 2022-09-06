@@ -123,10 +123,12 @@ class Visualizer:
             #print("COLOR FONTCOLOR:",color, fontcolor)
             c = [val/255 for val in color]
             color = (c[0],c[1],c[2], 1.0)
+            thicc = 0
 
             color_for_edge = color
             if rectangle["room_type"].lower() in ["bedroom", "bathroom", "garage"]:
                 color_for_edge = "#000000"
+                thicc = 4
             #print("COLOR FONTCOLOR:",color, fontcolor)
             r = patches.Rectangle(
                 xy=(rectangle["x"], rectangle["y"]),
@@ -134,7 +136,7 @@ class Visualizer:
                 height=rectangle["height"],
                 edgecolor=color_for_edge,
                 facecolor=color,
-                lw = 4,
+                lw = thicc,
                 alpha=1.0,
                 fill=True,
             )
@@ -273,7 +275,7 @@ class Visualizer:
         # horizontal line
         if xyfrom[1] == xyto[1]:
             # move up == increase y
-            tmp = xyto[1] + abs(xyto[0]-xyfrom[0])*0.05
+            tmp = xyto[1] + 1.3
             xyfrom = (xyfrom[0], tmp)
             xyto = (xyto[0], tmp)
             #offeset_y = abs(xyto[0]-xyfrom[0])*0.5
@@ -282,7 +284,7 @@ class Visualizer:
         # vertical line
         if xyfrom[0] == xyto[0]:
             # move left == increase x
-            tmp = xyto[0] + abs(xyto[1]-xyfrom[1])*0.05
+            tmp = xyto[0] + 1.3
             xyfrom = (tmp, xyfrom[1])
             xyto = (tmp, xyto[1])
 

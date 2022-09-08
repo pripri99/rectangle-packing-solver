@@ -18,6 +18,7 @@ import matplotlib.patches as patches
 from matplotlib import pylab as plt
 from matplotlib import collections as mc
 
+from .utility import segments_distance
 from .solution import Solution
 import numpy as np
 import math
@@ -79,6 +80,7 @@ class Visualizer:
             )
         ax.add_patch(r)
 
+        self.remove_small_gaps(positions, limit = 2)
 
         #add outside walls
         contour = self.find_contour(positions)
@@ -165,6 +167,8 @@ class Visualizer:
             fig.savefig(path)
 
         plt.close()
+        exit()
+        
     @classmethod
     def find_loops(self, all_line):
         all_loops = []
@@ -174,10 +178,11 @@ class Visualizer:
         return all_loops
 
     @classmethod
-    def remove_small_gaps(self, positions, limit = 3):
+    def remove_small_gaps(self, positions, limit = 2):
         """
-        Count small gaps in the plan
+        remove small gaps in the plan (i.e gaps less than limit)
         """
+        adj_side = {}
         n_gap = 0
         done = []
         for room in positions:
@@ -201,11 +206,30 @@ class Visualizer:
                             if [s1,s2] not in done and d > 0  and d <= limit:
                                 n_gap += 1
                                 done += [[s1,s2],[s2,s1]]
+                            if d == 0:
+                                s1 = tuple(s1)
+                                s2 = tuple(s2)
+                                if s1 not in adj_side: adj_side[s1] = 0
+                                if s2 not in adj_side: adj_side[s2] = 0
+                                adj_side[s1] += 1
+                                adj_side[s2] += 1
+
+        side_gap_count = {}
+        for pair in done:
+            for side in pair:
+                side = tuple(side)
+                if side not in side_gap_count:
+                    side_gap_count[side] = {"count":0, "pair":[]}
+                if pair not in side_gap_count[side]["pair"] and pair[::-1] not in side_gap_count[side]["pair"]:
+                    side_gap_count[side]["count"] +=1
+                    side_gap_count[side]["pair"].append(pair)
+
+        print("side gap count by side:", side_gap_count)
+        print("ADJcount by side:", adj_side)
+
         
         return n_gap
     
-
-
     @classmethod
     def find_contour(self, all_rectangle):
         all_lines = []
